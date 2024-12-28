@@ -1,19 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'fruit_data.dart';
 import 'fruit_description_page.dart';
 
 class FruitListPage extends StatelessWidget {
   const FruitListPage({super.key});
-
-  final List<Map<String, String>> fruits = const [
-    {'name': '사과', 'calories': '52 kcal', 'scientificName': 'Malus domestica'},
-    {
-      'name': '감귤',
-      'calories': '53 kcal',
-      'scientificName': 'Citrus reticulata'
-    },
-    {'name': '포도', 'calories': '69 kcal', 'scientificName': 'Vitis vinifera'},
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -24,8 +15,9 @@ class FruitListPage extends StatelessWidget {
       body: ListView.builder(
         itemCount: fruits.length,
         itemBuilder: (context, index) {
+          final fruit = fruits[index];
           return ListTile(
-            title: Text(fruits[index]['name']!),
+            title: Text(fruit['name']!),
             onTap: () {
               Navigator.push(
                 context,
