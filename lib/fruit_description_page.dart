@@ -1,20 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class FruitDescriptionPage extends StatefulWidget {
-  final Map<String, String> fruit;
+import 'fruit_provider.dart';
 
-  const FruitDescriptionPage({super.key, required this.fruit});
+class FruitDescriptionPage extends ConsumerStatefulWidget {
+  final String fruitId;
+
+  const FruitDescriptionPage({super.key, required this.fruitId});
 
   @override
-  State<FruitDescriptionPage> createState() => _FruitDescriptionPageState();
+  ConsumerState<FruitDescriptionPage> createState() =>
+      _FruitDescriptionPageState();
 }
 
-class _FruitDescriptionPageState extends State<FruitDescriptionPage> {
+class _FruitDescriptionPageState extends ConsumerState<FruitDescriptionPage> {
+  late TextEditingController _nameController;
+  bool _isEditing = false;
   bool _imageVisible = false;
 
   @override
   void initState() {
     super.initState();
+
+    final initialFruit = ref
+        .read(fruitListProvider)
+        .firstWhere((fruit) => fruit['id'] == widget.fruitId);
+    _nameController = TextEditingController(text: initialFruit['name']);
+
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) {
         setState(() {
@@ -25,10 +37,69 @@ class _FruitDescriptionPageState extends State<FruitDescriptionPage> {
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _toggleEdit() {
+    if (_isEditing) {
+      final newFruitName = _nameController.text;
+      if (newFruitName.isNotEmpty) {
+        ref
+            .read(fruitListProvider.notifier)
+            .updateFruitName(widget.fruitId, _nameController.text);
+      }
+    }
+    setState(() {
+      _isEditing = !_isEditing;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final fruit = ref.watch(fruitListProvider.select((fruits) {
+      try {
+        return fruits.firstWhere((fruit) => fruit['id'] == widget.fruitId);
+      } catch (e) {
+        return null;
+      }
+    }));
+
+    if (fruit == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('오류')),
+        body: const Center(child: Text('과일을 찾을 수 없습니다.')),
+      );
+    }
+
+    if (!_isEditing && _nameController.text != fruit['name']) {
+      _nameController.text = fruit['name']!;
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.fruit['name']!),
+        title: _isEditing
+            ? TextField(
+                controller: _nameController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white, fontSize: 20),
+                decoration: const InputDecoration(
+                  hintText: '과일 이름을 입력하세요',
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: InputBorder.none,
+                ),
+                onSubmitted: (value) {
+                  _toggleEdit();
+                },
+              )
+            : Text(fruit['name']!),
+        actions: [
+          IconButton(
+            icon: Icon(_isEditing ? Icons.check : Icons.edit),
+            onPressed: _toggleEdit,
+          ),
+        ],
       ),
       body: ListView(
         children: <Widget>[
@@ -53,27 +124,48 @@ class _FruitDescriptionPageState extends State<FruitDescriptionPage> {
                     opacity: _imageVisible ? 1.0 : 0.0,
                     duration: const Duration(milliseconds: 500),
                     child: Image.asset(
-                      'assets/images/${widget.fruit['imageFileName']}',
+                      'assets/images/${fruit['imageFileName']}',
                       width: 200,
                       height: 200,
                       fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.broken_image, size: 200),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-          ListTile(
-            title: const Text('이름'),
-            subtitle: Text(widget.fruit['name']!),
-          ),
+          const SizedBox(height: 16.0),
+          if (_isEditing)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: '과일 이름',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return '과일 이름을 입력하세요';
+                  }
+                  return null;
+                },
+              ),
+            )
+          else
+            ListTile(
+              title: const Text('이름'),
+              subtitle: Text(fruit['name']!),
+            ),
           ListTile(
             title: const Text('열량'),
-            subtitle: Text(widget.fruit['calories']!),
+            subtitle: Text(fruit['calories']!),
           ),
           ListTile(
             title: const Text('학명'),
-            subtitle: Text(widget.fruit['scientificName']!),
+            subtitle: Text(fruit['scientificName']!),
           ),
         ],
       ),
