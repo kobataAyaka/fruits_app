@@ -1,37 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'add_fruit_page.dart';
 import 'fruit_data.dart';
 import 'fruit_description_page.dart';
+import 'fruit_provider.dart';
 
-class FruitListPage extends StatefulWidget {
+class FruitListPage extends ConsumerWidget {
   const FruitListPage({super.key});
 
-  @override
-  State<FruitListPage> createState() => _FruitListPageState();
-}
-
-class _FruitListPageState extends State<FruitListPage> {
-  void _navigateToAddFruitPage() async {
-    // Navigator.push で入力画面に遷移し、結果を受け取る
-    final newFruit = await Navigator.push<Map<String, String>>(
+  void _navigateToAddFruitPage(BuildContext context, WidgetRef ref) async {
+    final newFruitData = await Navigator.push<Map<String, String>>(
       context,
       MaterialPageRoute(builder: (context) => const AddFruitPage()),
     );
 
-    if (newFruit != null) {
-      // 返されたデータがあれば、リストに追加してUIを更新
-      setState(() {
-        // 必要であれば、新しいIDをここで付与する
-        // final newId = (_fruits.length + 1).toString();
-        // _fruits.add({...newFruit, 'id': newId});
-        fruits.add(newFruit);
-      });
+    if (newFruitData != null) {
+      ref.read(fruitListProvider.notifier).addFruit(newFruitData);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('과일 리스트'),
@@ -66,7 +56,7 @@ class _FruitListPageState extends State<FruitListPage> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => FruitDescriptionPage(
-                      fruit: fruits[index],
+                      fruitId: fruit['id']!,
                     ),
                   ),
                 );
@@ -76,7 +66,8 @@ class _FruitListPageState extends State<FruitListPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToAddFruitPage,
+        onPressed: () => _navigateToAddFruitPage(context, ref),
+        tooltip: '새로운 과일 추가',
         child: const Icon(Icons.add),
       ),
     );
