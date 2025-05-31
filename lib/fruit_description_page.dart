@@ -42,6 +42,28 @@ class _FruitDescriptionPageState extends ConsumerState<FruitDescriptionPage> {
     super.dispose();
   }
 
+  void _toggleEditOrSave() {
+    if (_isEditing) {
+      final newFruitName = _nameController.text;
+      if (newFruitName.isNotEmpty) {
+        ref
+            .read(fruitListProvider.notifier)
+            .updateFruitName(widget.fruitId, _nameController.text);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('과일 이름이 수정되었습니다.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('과일 이름을 입력하세요.')),
+        );
+        return;
+      }
+      setState(() {
+        _isEditing = false;
+      });
+    }
+  }
+
   void _toggleEdit() {
     if (_isEditing) {
       final newFruitName = _nameController.text;
@@ -79,27 +101,7 @@ class _FruitDescriptionPageState extends ConsumerState<FruitDescriptionPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: _isEditing
-            ? TextField(
-                controller: _nameController,
-                autofocus: true,
-                style: const TextStyle(color: Colors.white, fontSize: 20),
-                decoration: const InputDecoration(
-                  hintText: '과일 이름을 입력하세요',
-                  hintStyle: TextStyle(color: Colors.white70),
-                  border: InputBorder.none,
-                ),
-                onSubmitted: (value) {
-                  _toggleEdit();
-                },
-              )
-            : Text(fruit['name']!),
-        actions: [
-          IconButton(
-            icon: Icon(_isEditing ? Icons.check : Icons.edit),
-            onPressed: _toggleEdit,
-          ),
-        ],
+        title: Text(fruit['name']!),
       ),
       body: ListView(
         children: <Widget>[
@@ -152,12 +154,26 @@ class _FruitDescriptionPageState extends ConsumerState<FruitDescriptionPage> {
                   }
                   return null;
                 },
+                onFieldSubmitted: (value) {
+                  // エンターキーで保存・編集モード切り替え
+                  _toggleEditOrSave();
+                },
               ),
             )
           else
             ListTile(
               title: const Text('이름'),
               subtitle: Text(fruit['name']!),
+              leading: const Icon(Icons.label_outline),
+              trailing: IconButton(
+                icon: const Icon(Icons.edit, color: Colors.blue),
+                tooltip: '이름 편집',
+                onPressed: () {
+                  setState(() {
+                    _isEditing = true;
+                  });
+                },
+              ),
             ),
           ListTile(
             title: const Text('열량'),
