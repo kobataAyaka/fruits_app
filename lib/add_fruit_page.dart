@@ -58,19 +58,19 @@ class _AddFruitPageState extends State<AddFruitPage> {
               ),
               const SizedBox(height: 20), // 少しスペースを空ける
               // --- ここから下は将来的に入力項目にする部分 (今は表示のみか、固定値) ---
-              ListTile(
-                title: const Text('カロリー (初期値)'),
-                subtitle: const Text('50 kcal'),
+              const ListTile(
+                title: Text('カロリー (初期値)'),
+                subtitle: Text('50 kcal'),
                 leading: Icon(Icons.local_fire_department),
               ),
-              ListTile(
-                title: const Text('学名 (初期値)'),
-                subtitle: const Text('Genus species'),
+              const ListTile(
+                title: Text('学名 (初期値)'),
+                subtitle: Text('Genus species'),
                 leading: Icon(Icons.science),
               ),
-              ListTile(
-                title: const Text('画像 (初期値)'),
-                subtitle: const Text('placeholder.png'),
+              const ListTile(
+                title: Text('画像 (初期値)'),
+                subtitle: Text('placeholder.png'),
                 leading: Icon(Icons.image),
               ),
               // --- ここまで ---
