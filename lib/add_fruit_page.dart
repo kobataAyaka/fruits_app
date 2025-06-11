@@ -1,29 +1,80 @@
 // add_fruit_page.dart (新しいファイルとして作成)
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AddFruitPage extends StatefulWidget {
+import 'fruit_ai_service.dart'; // 作成したサービスクラスをインポート
+
+class AddFruitPage extends ConsumerStatefulWidget {
   const AddFruitPage({super.key});
 
   @override
-  State<AddFruitPage> createState() => _AddFruitPageState();
+  ConsumerState<AddFruitPage> createState() => _AddFruitPageState();
 }
 
-class _AddFruitPageState extends State<AddFruitPage> {
+class _AddFruitPageState extends ConsumerState<AddFruitPage> {
+  // ConsumerState に変更
   final _formKey = GlobalKey<FormState>();
   String _fruitName = '';
+  String _calories = '50 kcal'; // 初期値またはAIからの取得値
+  String _scientificName = 'Genus species'; // 初期値またはAIからの取得値
+  final String _imageFileName = 'placeholder.png';
+
+  bool _isLoadingAiData = false; // AIデータ取得中のローディングフラグ
+
+  // AIから情報を取得するメソッド
+  Future<void> _fetchFruitInfoFromAi(String fruitName) async {
+    if (fruitName.isEmpty) return;
+
+    setState(() {
+      _isLoadingAiData = true;
+    });
+
+    try {
+      // Riverpod経由でサービスを取得する場合
+      final aiService = ref.read(fruitAiServiceProvider);
+      final info = await aiService.getFruitInfo(fruitName);
+
+      // // 直接インスタンス化する場合 (Providerを使わないなら)
+      // final aiService =
+      //     FruitAiService(/* Vertex AI instance */); // VertexAIのインスタンスを渡す
+      // final info = await aiService.getFruitInfo(fruitName);
+
+      if (info != null) {
+        setState(() {
+          _calories = info['calories'] ?? _calories;
+          _scientificName = info['scientificName'] ?? _scientificName;
+        });
+      } else {
+        // 情報を取得できなかった場合のエラーハンドリング
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('AIから情報を取得できませんでした。手動で入力してください。')),
+        );
+      }
+    } catch (e, stackTrace) {
+      // stackTrace も取得
+      debugPrint('エラー発生: $e');
+      debugPrint('スタックトレース: $stackTrace'); // スタックトレースも出力
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                '情報取得中にエラーが発生しました。詳細はコンソールを確認してください。')), // SnackBar には簡潔なメッセージ
+      );
+    } finally {
+      setState(() {
+        _isLoadingAiData = false;
+      });
+    }
+  }
 
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      // 新しい果物データを作成 (初期値を含む)
       final newFruit = {
         'name': _fruitName,
-        'calories': '50 kcal', // 初期値
-        'scientificName': 'Genus species', // 初期値
-        'imageFileName': 'placeholder.png', // 初期値 (適切な画像を用意してください)
-        // 必要に応じて 'id' もユニークに生成するロジックを追加
+        'calories': _calories,
+        'scientificName': _scientificName,
+        'imageFileName': _imageFileName,
       };
-      // Navigator.pop で新しい果物データを元の画面に返す
       Navigator.pop(context, newFruit);
     }
   }
@@ -36,10 +87,9 @@ class _AddFruitPageState extends State<AddFruitPage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        // Formウィジェットで入力フィールドをグループ化
         child: Form(
           key: _formKey,
-          child: ListView( // 今後項目が増えることを考慮してListViewを使用
+          child: ListView(
             children: <Widget>[
               TextFormField(
                 decoration: const InputDecoration(
@@ -55,25 +105,67 @@ class _AddFruitPageState extends State<AddFruitPage> {
                 onSaved: (value) {
                   _fruitName = value!;
                 },
+                // 名前が変更されたらAIに問い合わせる (例: onFieldSubmitted やボタン)
+                onFieldSubmitted: (value) {
+                  _fetchFruitInfoFromAi(value);
+                },
               ),
-              const SizedBox(height: 20), // 少しスペースを空ける
-              // --- ここから下は将来的に入力項目にする部分 (今は表示のみか、固定値) ---
-              const ListTile(
-                title: Text('カロリー (初期値)'),
-                subtitle: Text('50 kcal'),
-                leading: Icon(Icons.local_fire_department),
+              // AIから情報を取得するためのボタン (オプション)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: _isLoadingAiData
+                    ? const Center(child: CircularProgressIndicator())
+                    : ElevatedButton.icon(
+                        icon: const Icon(Icons.auto_awesome),
+                        label: const Text('カロリーと学名を自動入力'),
+                        onPressed: () {
+                          // TextFormFieldから現在の名前を取得してAIに渡す
+                          final currentFormState = _formKey.currentState;
+                          if (currentFormState != null &&
+                              currentFormState.validate()) {
+                            currentFormState.save(); // _fruitName を更新
+                            _fetchFruitInfoFromAi(_fruitName);
+                          }
+                        },
+                      ),
               ),
-              const ListTile(
-                title: Text('学名 (初期値)'),
-                subtitle: Text('Genus species'),
-                leading: Icon(Icons.science),
+              const SizedBox(height: 10),
+              // カロリー (AIが入力するか、手動で編集可能にするか)
+              TextFormField(
+                // controller を使って値を更新する方が良いかも
+                key: ValueKey(_calories), // AIによって値が変わるのでキーを指定
+                initialValue: _calories,
+                decoration: const InputDecoration(
+                  labelText: 'カロリー',
+                  border: OutlineInputBorder(),
+                  // suffixIcon: Icon(Icons.local_fire_department),
+                ),
+                onSaved: (value) => _calories = value ?? _calories,
+                // readOnly: true, // AIで入力されたら編集不可にする場合
               ),
-              const ListTile(
-                title: Text('画像 (初期値)'),
-                subtitle: Text('placeholder.png'),
-                leading: Icon(Icons.image),
+              const SizedBox(height: 20),
+              // 学名 (AIが入力するか、手動で編集可能にするか)
+              TextFormField(
+                key: ValueKey(_scientificName), // AIによって値が変わるのでキーを指定
+                initialValue: _scientificName,
+                decoration: const InputDecoration(
+                  labelText: '学名',
+                  border: OutlineInputBorder(),
+                  // suffixIcon: Icon(Icons.science),
+                ),
+                onSaved: (value) => _scientificName = value ?? _scientificName,
+                // readOnly: true, // AIで入力されたら編集不可にする場合
               ),
-              // --- ここまで ---
+              const SizedBox(height: 20),
+              // 画像 (変更なし)
+              ListTile(
+                title: const Text('画像 (初期値)'),
+                subtitle: const Text('placeholder.png'),
+                leading: const Icon(Icons.image),
+                onTap: () {
+                  // TODO: 画像選択機能を実装するならここ
+                },
+              ),
               const SizedBox(height: 30),
               ElevatedButton(
                 onPressed: _submitForm,
