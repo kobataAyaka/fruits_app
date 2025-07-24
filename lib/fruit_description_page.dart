@@ -166,7 +166,7 @@ class _FruitDescriptionPageState extends ConsumerState<FruitDescriptionPage> {
               subtitle: Text(fruit['name']!),
               leading: const Icon(Icons.label_outline),
               trailing: IconButton(
-                icon: const Icon(Icons.edit, color: Colors.blue),
+                icon: const Icon(Icons.edit),
                 tooltip: '이름 편집',
                 onPressed: () {
                   setState(() {
