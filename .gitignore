@@ -61,3 +61,6 @@ ios/Pods/
 ios/.symlinks/
 android/.gradle/
 android/build/
+
+# Node.js
+node_modules/
